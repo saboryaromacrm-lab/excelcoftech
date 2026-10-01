@@ -4,7 +4,8 @@ App web para abrir, editar y guardar planillas (listas de precios y planillas si
 
 ## Cómo usarla
 
-- **Sin internet:** abrí `dist/coftech-excel.html` con doble clic. Es un único archivo que trae todo adentro y no necesita conexión.
+- **Con internet:** abrí https://saboryaromacrm-lab.github.io/excelcoftech/ en el navegador. Se actualiza sola con cada cambio que se sube al repositorio.
+- **Sin internet:** descargá https://saboryaromacrm-lab.github.io/excelcoftech/coftech-excel.html (o `dist/coftech-excel.html` de este repositorio) y abrilo con doble clic. Es un único archivo que trae todo adentro y no necesita conexión.
 - Abrí un archivo con el botón **Abrir** o arrastrándolo a la ventana: `.xlsx`, `.xls`, `.xlsm` (las macros no se ejecutan), `.csv`, `.tsv` y `.ods`.
 - **Guardar como** descarga una copia nueva en tu carpeta de Descargas:
   - `.xlsx`: datos, fórmulas y formato. Es el formato recomendado.
