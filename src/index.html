@@ -1,0 +1,231 @@
+<title>Coftech Excel</title>
+<meta name="description" content="Coftech Excel: abrí, editá y guardá planillas de Excel en el navegador.">
+<style>/*__CSS__*/</style>
+
+<div id="app">
+  <header class="titlebar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">C</span>Coftech Excel</div>
+    <div class="file-name" id="fileName">Ningún archivo abierto</div>
+    <div class="dirty" id="dirtyFlag" hidden>Cambios sin guardar</div>
+  </header>
+
+  <div class="ribbon" id="ribbon">
+    <div class="group">
+      <div class="group-body">
+        <button class="big" id="btnOpen" data-icon="open" title="Abrir un archivo de la PC">Abrir</button>
+        <div class="dd">
+          <button class="big needs-file" id="btnSave" data-icon="save" title="Descargar una copia del archivo">Guardar como ▾</button>
+          <div class="menu" id="menuSave">
+            <button data-save="xlsx"><b>Excel (.xlsx)</b><small>Recomendado. Datos, fórmulas y formato</small></button>
+            <button data-save="xls"><b>Excel 97-2003 (.xls)</b><small>Datos y fórmulas, sin colores ni bordes</small></button>
+            <button data-save="ods"><b>OpenDocument (.ods)</b><small>Datos y fórmulas, sin colores ni bordes</small></button>
+            <button data-save="csv"><b>CSV (.csv)</b><small>Solo valores de la hoja activa</small></button>
+            <button data-save="tsv"><b>Texto con tabulaciones (.tsv)</b><small>Solo valores de la hoja activa</small></button>
+          </div>
+        </div>
+        <button class="big needs-file" id="btnPrint" data-icon="print" title="Imprimir o guardar como PDF">Imprimir / PDF</button>
+      </div>
+      <div class="group-label">Archivo</div>
+    </div>
+
+    <div class="group">
+      <div class="group-body col2">
+        <button class="needs-file" id="btnUndo" data-icon="undo" title="Deshacer (Ctrl+Z)"></button>
+        <button class="needs-file" id="btnRedo" data-icon="redo" title="Rehacer (Ctrl+Y)"></button>
+      </div>
+      <div class="group-label">Deshacer</div>
+    </div>
+
+    <div class="group">
+      <div class="group-body">
+        <button class="big needs-file" id="btnPaste" data-icon="paste" title="Pegar (Ctrl+V)">Pegar</button>
+        <div class="stack">
+          <button class="needs-file" id="btnCut" data-icon="cut" title="Cortar (Ctrl+X)">Cortar</button>
+          <button class="needs-file" id="btnCopy" data-icon="copy" title="Copiar (Ctrl+C)">Copiar</button>
+        </div>
+      </div>
+      <div class="group-label">Portapapeles</div>
+    </div>
+
+    <div class="group">
+      <div class="group-body stack">
+        <div class="row">
+          <select id="fontSize" class="needs-file" title="Tamaño de letra">
+            <option>8</option><option>9</option><option>10</option><option selected>11</option><option>12</option>
+            <option>14</option><option>16</option><option>18</option><option>20</option><option>24</option>
+            <option>28</option><option>36</option>
+          </select>
+        </div>
+        <div class="row">
+          <button class="needs-file fmt-b" id="btnBold" title="Negrita (Ctrl+Alt+N)">N</button>
+          <button class="needs-file fmt-i" id="btnItalic" title="Cursiva (Ctrl+K)">K</button>
+          <button class="needs-file fmt-u" id="btnUnderline" title="Subrayado (Ctrl+S)">S</button>
+          <div class="dd">
+            <button class="needs-file" id="btnBorders" data-icon="borders" title="Bordes">▾</button>
+            <div class="menu" id="menuBorders">
+              <button data-border="all">Todos los bordes</button>
+              <button data-border="outer">Borde exterior</button>
+              <button data-border="bottom">Borde inferior</button>
+              <button data-border="top">Borde superior</button>
+              <button data-border="none">Sin bordes</button>
+            </div>
+          </div>
+          <div class="dd">
+            <button class="needs-file color-btn" id="btnFill" data-icon="fill" title="Color de fondo"><span class="swatch" id="swFill"></span>▾</button>
+            <div class="menu palette" id="menuFill"></div>
+          </div>
+          <div class="dd">
+            <button class="needs-file color-btn" id="btnColor" data-icon="fontcolor" title="Color de texto"><span class="swatch" id="swColor"></span>▾</button>
+            <div class="menu palette" id="menuColor"></div>
+          </div>
+        </div>
+      </div>
+      <div class="group-label">Fuente</div>
+    </div>
+
+    <div class="group">
+      <div class="group-body stack">
+        <div class="row">
+          <button class="needs-file" id="btnAlignL" data-icon="alignl" title="Alinear a la izquierda"></button>
+          <button class="needs-file" id="btnAlignC" data-icon="alignc" title="Centrar"></button>
+          <button class="needs-file" id="btnAlignR" data-icon="alignr" title="Alinear a la derecha"></button>
+        </div>
+        <div class="row">
+          <button class="needs-file wide" id="btnMerge" data-icon="merge" title="Combinar las celdas seleccionadas o separarlas">Combinar</button>
+        </div>
+      </div>
+      <div class="group-label">Alineación</div>
+    </div>
+
+    <div class="group">
+      <div class="group-body stack">
+        <div class="row">
+          <select id="numFormat" class="needs-file" title="Formato de número">
+            <option value="general">General</option>
+            <option value="numero">Número</option>
+            <option value="moneda">Moneda ($)</option>
+            <option value="porcentaje">Porcentaje</option>
+            <option value="fecha">Fecha</option>
+            <option value="otro" hidden>Personalizado</option>
+          </select>
+        </div>
+        <div class="row">
+          <button class="needs-file txt" id="btnCurrency" title="Formato moneda">$</button>
+          <button class="needs-file txt" id="btnPercent" title="Formato porcentaje">%</button>
+          <button class="needs-file txt" id="btnDecInc" title="Aumentar decimales">,0→,00</button>
+          <button class="needs-file txt" id="btnDecDec" title="Disminuir decimales">,00→,0</button>
+        </div>
+      </div>
+      <div class="group-label">Número</div>
+    </div>
+
+    <div class="group">
+      <div class="group-body stack">
+        <div class="dd">
+          <button class="needs-file wide" id="btnInsert" data-icon="insert" title="Insertar filas o columnas">Insertar ▾</button>
+          <div class="menu" id="menuInsert">
+            <button data-cmd="insertRows">Insertar filas arriba</button>
+            <button data-cmd="insertCols">Insertar columnas a la izquierda</button>
+          </div>
+        </div>
+        <div class="dd">
+          <button class="needs-file wide" id="btnDelete" data-icon="delete" title="Eliminar filas o columnas">Eliminar ▾</button>
+          <div class="menu" id="menuDelete">
+            <button data-cmd="deleteRows">Eliminar filas</button>
+            <button data-cmd="deleteCols">Eliminar columnas</button>
+          </div>
+        </div>
+      </div>
+      <div class="group-label">Celdas</div>
+    </div>
+
+    <div class="group">
+      <div class="group-body stack">
+        <div class="row">
+          <button class="needs-file" id="btnSortAsc" data-icon="sortasc" title="Ordenar de A a Z (o de menor a mayor)"></button>
+          <button class="needs-file" id="btnSortDesc" data-icon="sortdesc" title="Ordenar de Z a A (o de mayor a menor)"></button>
+          <button class="needs-file" id="btnFilter" data-icon="filter" title="Activar o quitar el filtro"></button>
+        </div>
+        <div class="row">
+          <button class="needs-file wide" id="btnFind" data-icon="search" title="Buscar y reemplazar (Ctrl+B)">Buscar</button>
+        </div>
+      </div>
+      <div class="group-label">Datos</div>
+    </div>
+
+    <div class="group">
+      <div class="group-body">
+        <div class="dd">
+          <button class="big needs-file" id="btnFreeze" data-icon="freeze" title="Dejar fija la primera fila o columna">Inmovilizar ▾</button>
+          <div class="menu" id="menuFreeze">
+            <button data-freeze="row">Inmovilizar fila superior</button>
+            <button data-freeze="col">Inmovilizar primera columna</button>
+            <button data-freeze="both">Inmovilizar fila y columna</button>
+            <button data-freeze="none">Movilizar todo</button>
+          </div>
+        </div>
+      </div>
+      <div class="group-label">Vista</div>
+    </div>
+  </div>
+
+  <div class="formula-bar">
+    <input id="nameBox" class="name-box" spellcheck="false" autocomplete="off" aria-label="Celda activa">
+    <span class="fx">fx</span>
+    <input id="fbar" class="fbar-input" spellcheck="false" autocomplete="off" aria-label="Contenido de la celda">
+  </div>
+
+  <main class="main">
+    <div id="scroller" class="scroller" hidden>
+      <div id="gridWrap" class="grid-wrap">
+        <table id="grid" class="grid"></table>
+        <div id="selBox" class="sel-box"></div>
+        <div id="copyBox" class="copy-box" hidden></div>
+        <div id="actBox" class="act-box"></div>
+        <div id="fillHandle" class="fill-handle"></div>
+        <div id="fillPreview" class="fill-preview" hidden></div>
+        <input id="editor" class="editor" spellcheck="false" autocomplete="off" hidden>
+      </div>
+    </div>
+    <div id="welcome" class="welcome">
+      <div class="drop-card">
+        <div class="drop-icon" data-icon="sheet"></div>
+        <h1>Arrastrá tu archivo acá o hacé clic en Abrir</h1>
+        <p>Formatos: .xlsx, .xls, .xlsm, .csv, .tsv y .ods</p>
+        <button class="primary" id="btnOpen2">Abrir archivo</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="tabs-bar">
+    <div class="tabs" id="tabs"></div>
+    <button class="add-sheet needs-file" id="btnAddSheet" title="Agregar hoja">+</button>
+  </footer>
+</div>
+
+<textarea id="kbd" class="kbd" aria-hidden="true" tabindex="-1"></textarea>
+<input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.ods" hidden>
+<div id="dropOverlay" class="drop-overlay" hidden><div>Soltá el archivo para abrirlo</div></div>
+<div id="ctxMenu" class="menu ctx" hidden></div>
+<div id="filterMenu" class="filter-menu" hidden></div>
+<div id="findPanel" class="find-panel" hidden>
+  <div class="find-head"><b>Buscar y reemplazar</b><button id="findClose" title="Cerrar">✕</button></div>
+  <label for="findText">Buscar</label>
+  <input id="findText" autocomplete="off">
+  <label for="replaceText">Reemplazar con</label>
+  <input id="replaceText" autocomplete="off">
+  <label class="check"><input type="checkbox" id="findCase"> Coincidir mayúsculas y minúsculas</label>
+  <label class="check"><input type="checkbox" id="findWhole"> Coincidir con el contenido de toda la celda</label>
+  <div class="find-actions">
+    <button id="btnFindNext" class="primary">Buscar siguiente</button>
+    <button id="btnReplace">Reemplazar</button>
+    <button id="btnReplaceAll">Reemplazar todos</button>
+  </div>
+  <div class="find-msg" id="findMsg"></div>
+</div>
+<div id="modal" class="modal-back" hidden><div class="modal" role="dialog" aria-modal="true"></div></div>
+<div id="toasts" class="toasts"></div>
+<div id="print" class="print-area"></div>
+
+<script>/*__LIBS__*/</script>
+<script>/*__APP__*/</script>
