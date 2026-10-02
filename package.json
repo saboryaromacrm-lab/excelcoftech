@@ -5,7 +5,8 @@
   "scripts": {
     "build": "node build.js",
     "test": "node tests/formulas.test.js && node tests/format.test.js",
-    "test:e2e": "node build.js && node tests/e2e.js && node tests/e2e-datos.js"
+    "test:e2e": "node build.js && node tests/e2e.js && node tests/e2e-datos.js",
+    "build:site": "node build.js --site"
   },
   "repository": {
     "type": "git",

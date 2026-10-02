@@ -33,6 +33,15 @@ const out = path.join(root, 'dist', 'coftech-excel.html');
 fs.writeFileSync(out, full);
 console.log('Generado', path.relative(root, out), (full.length / 1024 / 1024).toFixed(2) + ' MB');
 
+// --site: carpeta lista para publicar (Vercel): la app como página principal y como archivo descargable.
+if (process.argv.includes('--site')) {
+  const site = path.join(root, '_site');
+  fs.mkdirSync(site, { recursive: true });
+  fs.writeFileSync(path.join(site, 'index.html'), full);
+  fs.writeFileSync(path.join(site, 'coftech-excel.html'), full);
+  console.log('Generado _site/');
+}
+
 const fi = process.argv.indexOf('--fragment');
 if (fi > 0 && process.argv[fi + 1]) {
   fs.writeFileSync(process.argv[fi + 1], body);
