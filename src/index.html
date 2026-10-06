@@ -184,6 +184,7 @@
         <div id="actBox" class="act-box"></div>
         <div id="fillHandle" class="fill-handle"></div>
         <div id="fillPreview" class="fill-preview" hidden></div>
+        <div id="moveLine" class="move-line" hidden></div>
         <input id="editor" class="editor" spellcheck="false" autocomplete="off" hidden>
       </div>
     </div>
@@ -200,6 +201,11 @@
   <footer class="tabs-bar">
     <div class="tabs" id="tabs"></div>
     <button class="add-sheet needs-file" id="btnAddSheet" title="Agregar hoja">+</button>
+    <div class="zoom" role="group" aria-label="Zoom">
+      <button id="zoomOut" title="Alejar" aria-label="Alejar" disabled>−</button>
+      <button id="zoomLbl" class="zoom-lbl" title="Volver al 100%" disabled>100%</button>
+      <button id="zoomIn" title="Acercar" aria-label="Acercar" disabled>+</button>
+    </div>
   </footer>
 </div>
 

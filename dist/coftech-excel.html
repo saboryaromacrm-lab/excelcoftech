@@ -102,15 +102,15 @@ button:disabled { cursor: default; opacity: .4; }
 .scroller { position: absolute; inset: 0; overflow: auto; }
 .grid-wrap { position: relative; display: inline-block; min-width: 100%; }
 
-.grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; font-family: var(--cell); font-size: 14px; background: #fff; }
-.grid th, .grid td { height: 21px; padding: 0 4px; border-right: 1px solid var(--grid-line); border-bottom: 1px solid var(--grid-line); white-space: nowrap; overflow: hidden; text-overflow: clip; line-height: 1.2; }
+.grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; font-family: var(--cell); font-size: calc(14px * var(--z, 1)); background: #fff; }
+.grid th, .grid td { height: 21px; padding: 0 calc(4px * var(--z, 1)); border-right: 1px solid var(--grid-line); border-bottom: 1px solid var(--grid-line); white-space: nowrap; overflow: hidden; text-overflow: clip; line-height: 1.2; }
 .grid td { vertical-align: bottom; padding-bottom: 1px; cursor: cell; background: #fff; }
 .grid td.ov { overflow: visible; }
 .grid td.num { text-align: right; }
 .grid td.ctr { text-align: center; }
 .grid td.err { text-align: center; }
-.grid thead th { position: sticky; top: 0; z-index: 5; background: var(--head-bg); color: var(--head-fg); font: 12px var(--ui); text-align: center; border-color: var(--line); user-select: none; cursor: s-resize; overflow: visible; }
-.grid tbody th { position: sticky; left: 0; z-index: 4; background: var(--head-bg); color: var(--head-fg); font: 12px var(--ui); text-align: center; border-color: var(--line); user-select: none; cursor: e-resize; overflow: visible; }
+.grid thead th { position: sticky; top: 0; z-index: 5; background: var(--head-bg); color: var(--head-fg); font: calc(12px * var(--z, 1)) var(--ui); text-align: center; border-color: var(--line); user-select: none; cursor: s-resize; overflow: visible; }
+.grid tbody th { position: sticky; left: 0; z-index: 4; background: var(--head-bg); color: var(--head-fg); font: calc(12px * var(--z, 1)) var(--ui); text-align: center; border-color: var(--line); user-select: none; cursor: e-resize; overflow: visible; }
 .grid thead th.corner { left: 0; z-index: 7; cursor: default; }
 .grid th.hsel { background: var(--head-sel); color: var(--accent-dark); }
 .grid td.fr { position: sticky; top: var(--hh, 22px); z-index: 3; }
@@ -209,6 +209,18 @@ button.primary:hover { background: var(--accent-dark); }
   .print-area tr { break-inside: avoid; }
 }
 .grid tr.spacer td { height: 0; padding: 0; border: 0; background: transparent; cursor: default; }
+
+/* Zoom */
+.zoom { display: flex; align-items: center; gap: 2px; margin-left: auto; padding: 0 12px; flex: none; }
+.zoom button { min-width: 26px; height: 24px; padding: 0 6px; border: 1px solid transparent; border-radius: 3px; background: transparent; font-size: 15px; line-height: 1; color: var(--fg); }
+.zoom button:hover:not(:disabled) { background: var(--chrome-2); border-color: var(--line); }
+.zoom .zoom-lbl { min-width: 48px; font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* Mover columnas y filas */
+.grid.sel-cols thead th.hsel { cursor: grab; }
+.grid.sel-rows tbody th.hsel { cursor: grab; }
+body.moving, body.moving * { cursor: grabbing !important; }
+.move-line { position: absolute; z-index: 9; background: var(--accent); pointer-events: none; border-radius: 2px; box-shadow: 0 0 0 1px #fff; }
 </style>
 
 </head>
@@ -395,6 +407,7 @@ button.primary:hover { background: var(--accent-dark); }
         <div id="actBox" class="act-box"></div>
         <div id="fillHandle" class="fill-handle"></div>
         <div id="fillPreview" class="fill-preview" hidden></div>
+        <div id="moveLine" class="move-line" hidden></div>
         <input id="editor" class="editor" spellcheck="false" autocomplete="off" hidden>
       </div>
     </div>
@@ -411,6 +424,11 @@ button.primary:hover { background: var(--accent-dark); }
   <footer class="tabs-bar">
     <div class="tabs" id="tabs"></div>
     <button class="add-sheet needs-file" id="btnAddSheet" title="Agregar hoja">+</button>
+    <div class="zoom" role="group" aria-label="Zoom">
+      <button id="zoomOut" title="Alejar" aria-label="Alejar" disabled>−</button>
+      <button id="zoomLbl" class="zoom-lbl" title="Volver al 100%" disabled>100%</button>
+      <button id="zoomIn" title="Acercar" aria-label="Acercar" disabled>+</button>
+    </div>
   </footer>
 </div>
 
@@ -2129,6 +2147,7 @@ var _default = exports.default = dictionary;
     dirty: false,
     sel: { r0: 0, c0: 0, r1: 0, c1: 0, ar: 0, ac: 0 },
     anchor: { r: 0, c: 0 },
+    zoom: 1,
     undo: [],
     redo: [],
     clip: null,
@@ -2143,6 +2162,12 @@ var _default = exports.default = dictionary;
   const getStyle = (r, c, sh) => (sh || sheet()).styles.get(key(r, c));
   const colWidth = c => sheet().colW[c] || IO.DEFAULT_COL_W;
   const rowHeight = r => sheet().rowH[r] || IO.DEFAULT_ROW_H;
+  // Tamaños en pantalla: el ancho y el alto guardados se multiplican por el zoom.
+  const ZOOM_STEPS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
+  const headW = () => Math.round(HEAD_W * S.zoom);
+  const colPx = c => Math.max(1, Math.round(colWidth(c) * S.zoom));
+  const rowPx = r => Math.max(1, Math.round(rowHeight(r) * S.zoom));
+  const fontPx = size => Math.round((size ? size * 14 / 11 : 14) * S.zoom * 10) / 10;
 
   function buildHF(sheetsData) {
     if (S.hf) S.hf.destroy();
@@ -2358,7 +2383,7 @@ var _default = exports.default = dictionary;
     if (st.u) css += 'text-decoration:underline;';
     if (st.color) css += 'color:' + st.color + ';';
     if (st.bg) css += 'background:' + st.bg + ';';
-    if (st.size) css += 'font-size:' + Math.round(st.size * 14 / 11) + 'px;';
+    if (st.size) css += 'font-size:' + fontPx(st.size) + 'px;';
     if (st.align) css += 'text-align:' + st.align + ';';
     return css;
   }
@@ -2370,7 +2395,7 @@ var _default = exports.default = dictionary;
     const parts = [];
     const hidden = sh.hidden.has(r);
     const frow = sh.freezeRow && r === 0;
-    parts.push('<tr data-r="' + r + '"' + (frow ? ' class="frow"' : '') + ' style="height:' + rowHeight(r) + 'px' + (hidden ? ';display:none' : '') + '">');
+    parts.push('<tr data-r="' + r + '"' + (frow ? ' class="frow"' : '') + ' style="height:' + rowPx(r) + 'px' + (hidden ? ';display:none' : '') + '">');
     parts.push('<th data-hr="' + r + '"' + (r >= S.sel.r0 && r <= S.sel.r1 ? ' class="hsel"' : '') + '>' + (r + 1) + '<div class="rzr" data-rzr="' + r + '"></div></th>');
     for (let c = 0; c < L.cols; c++) {
       const k = key(r, c);
@@ -2417,8 +2442,10 @@ var _default = exports.default = dictionary;
     if (!S.loaded) return;
     const sh = sheet();
     const ext = usedExtent(sh);
-    const rows = Math.max(100, ext.rows + 30, S.sel.r1 + 20);
-    const cols = Math.max(26, ext.cols + 5, S.sel.c1 + 5);
+    const rows = Math.max(100, ext.rows + 30, (S.sel.wholeCols ? 0 : S.sel.r1) + 20);
+    const cols = Math.max(26, ext.cols + 5, (S.sel.wholeRows ? 0 : S.sel.c1) + 5);
+    if (S.sel.wholeCols) S.sel.r1 = rows - 1;
+    if (S.sel.wholeRows) S.sel.c1 = cols - 1;
     const L = S.L;
     L.rows = rows; L.cols = cols;
     L.merged = new Map(); L.covered = new Map();
@@ -2431,10 +2458,10 @@ var _default = exports.default = dictionary;
     const valAt = (r, c) => (values[r] && values[r][c] !== undefined ? values[r][c] : null);
 
     const parts = [];
-    parts.push('<colgroup><col style="width:' + HEAD_W + 'px">');
+    parts.push('<colgroup><col style="width:' + headW() + 'px">');
     L.colW = [];
     for (let c = 0; c < cols; c++) {
-      L.colW[c] = colWidth(c);
+      L.colW[c] = colPx(c);
       parts.push('<col style="width:' + L.colW[c] + 'px">');
     }
     parts.push('</colgroup><thead><tr><th class="corner" data-corner="1"></th>');
@@ -2442,16 +2469,17 @@ var _default = exports.default = dictionary;
     parts.push('</tr></thead><tbody></tbody>');
     const grid = $('grid');
     grid.innerHTML = parts.join('');
-    let totalW = HEAD_W;
+    let totalW = headW();
     L.colX = [];
     for (let c = 0; c < cols; c++) { L.colX[c] = totalW; totalW += L.colW[c]; }
     grid.style.width = totalW + 'px';
     L.headH = grid.tHead.rows[0].offsetHeight;
     grid.style.setProperty('--hh', L.headH + 'px');
-    grid.style.setProperty('--hw', HEAD_W + 'px');
+    grid.style.setProperty('--hw', headW() + 'px');
+    $('gridWrap').style.setProperty('--z', S.zoom);
     // Alturas previstas; las filas dibujadas se miden y corrigen en renderWindow.
     L.rowH = [];
-    for (let r = 0; r < rows; r++) L.rowH[r] = sh.hidden.has(r) ? 0 : rowHeight(r);
+    for (let r = 0; r < rows; r++) L.rowH[r] = sh.hidden.has(r) ? 0 : rowPx(r);
     L.rowY = [];
     computeRowY();
     L.thCols = Array.from(grid.tHead.rows[0].cells).slice(1);
@@ -2626,6 +2654,9 @@ var _default = exports.default = dictionary;
       L.thCols.forEach((th, c) => th.classList.toggle('hsel', c >= s.c0 && c <= s.c1));
       L.thRows.forEach((th, r) => th.classList.toggle('hsel', r >= s.r0 && r <= s.r1));
     }
+    const gridEl = $('grid');
+    gridEl.classList.toggle('sel-cols', isWholeCols() && !isWholeRows());
+    gridEl.classList.toggle('sel-rows', isWholeRows() && !isWholeCols());
     $('nameBox').value = multi && !isMergeOnly ? cellName(s.r0, s.c0) + ':' + cellName(s.r1, s.c1) : cellName(s.ar, s.ac);
     if (!S.edit) $('fbar').value = editTextOf(s.ar, s.ac);
     updateToolbarState();
@@ -2673,7 +2704,7 @@ var _default = exports.default = dictionary;
     const rc = rectOf(r, c, r, c);
     const sh = sheet();
     const topFixed = L.headH + (sh.freezeRow ? L.rowH[0] : 0);
-    const leftFixed = HEAD_W + (sh.freezeCol ? L.colW[0] : 0);
+    const leftFixed = headW() + (sh.freezeCol ? L.colW[0] : 0);
     if (!(sh.freezeRow && r === 0)) {
       if (rc.top - topFixed < sc.scrollTop) sc.scrollTop = rc.top - topFixed;
       else if (rc.top + rc.height > sc.scrollTop + sc.clientHeight) sc.scrollTop = rc.top + rc.height - sc.clientHeight;
@@ -2687,8 +2718,11 @@ var _default = exports.default = dictionary;
   // ---------- Selección ----------
   function select(r0, c0, r1, c1, ar, ac, noScroll) {
     const rg = expandRange({ r0: Math.min(r0, r1), c0: Math.min(c0, c1), r1: Math.max(r0, r1), c1: Math.max(c0, c1) });
-    S.sel = Object.assign(rg, { ar: ar === undefined ? r0 : ar, ac: ac === undefined ? c0 : ac });
-    const grow = S.sel.r1 + 5 >= S.L.rows || S.sel.c1 + 2 >= S.L.cols;
+    // Columna(s) o fila(s) enteras: se recuerda para que la cuadrícula no las trate como un rango común.
+    const wholeCols = rg.r0 === 0 && rg.r1 >= S.L.rows - 1;
+    const wholeRows = rg.c0 === 0 && rg.c1 >= S.L.cols - 1;
+    S.sel = Object.assign(rg, { ar: ar === undefined ? r0 : ar, ac: ac === undefined ? c0 : ac, wholeCols, wholeRows });
+    const grow = (!wholeCols && S.sel.r1 + 5 >= S.L.rows) || (!wholeRows && S.sel.c1 + 2 >= S.L.cols);
     if (grow) renderGrid(); else updateSelectionUI();
     if (!noScroll) ensureVisible(S.sel.ar, S.sel.ac);
   }
@@ -2786,7 +2820,7 @@ var _default = exports.default = dictionary;
     const st = getStyle(r, c) || {};
     ed.style.fontWeight = st.b ? '700' : '';
     ed.style.fontStyle = st.i ? 'italic' : '';
-    ed.style.fontSize = st.size ? Math.round(st.size * 14 / 11) + 'px' : '';
+    ed.style.fontSize = fontPx(st.size) + 'px';
     ed.hidden = false;
     autosizeEditor();
     $('fbar').value = text;
@@ -3047,6 +3081,119 @@ var _default = exports.default = dictionary;
       shiftSheetMeta(sheet(), 'col', s.c0, -n);
     });
     selectCell(s.ar, s.c0);
+  }
+
+  // ---------- Mover columnas y filas arrastrando ----------
+  /** Posición nueva de cada índice al mover `count` elementos desde `start` hasta antes de `boundary`. */
+  function movedIndex(i, start, count, boundary) {
+    const end = start + count;
+    if (boundary > end) {
+      if (i >= start && i < end) return i + (boundary - end);
+      if (i >= end && i < boundary) return i - count;
+    } else if (boundary < start) {
+      if (i >= start && i < end) return i - (start - boundary);
+      if (i >= boundary && i < start) return i + count;
+    }
+    return i;
+  }
+
+  /** Mueve columnas (axis 'col') o filas (axis 'row'); las fórmulas se ajustan solas. */
+  function moveLines(axis, start, count, boundary) {
+    if (boundary >= start && boundary <= start + count) return;
+    const isRow = axis === 'row';
+    const sh = sheet();
+    const map = i => movedIndex(i, start, count, boundary);
+    for (const m of sh.merges) {
+      const a = isRow ? m.r0 : m.c0, b = isRow ? m.r1 : m.c1;
+      for (let i = a; i < b; i++) {
+        if (map(i + 1) !== map(i) + 1) {
+          toast('No se puede mover: hay celdas combinadas que quedarían separadas.', 'error');
+          return;
+        }
+      }
+    }
+    const first = map(start);
+    commit(() => {
+      if (isRow) S.hf.moveRows(sid(), start, count, boundary);
+      else S.hf.moveColumns(sid(), start, count, boundary);
+      const styles = new Map();
+      sh.styles.forEach((v, k) => {
+        const [r, c] = k.split(',').map(Number);
+        styles.set(isRow ? key(map(r), c) : key(r, map(c)), v);
+      });
+      sh.styles = styles;
+      const sizes = isRow ? sh.rowH : sh.colW;
+      const moved = {};
+      Object.keys(sizes).forEach(i => { moved[map(+i)] = sizes[i]; });
+      if (isRow) sh.rowH = moved; else sh.colW = moved;
+      sh.merges = sh.merges.map(m => (isRow
+        ? { r0: map(m.r0), c0: m.c0, r1: map(m.r1), c1: m.c1 }
+        : { r0: m.r0, c0: map(m.c0), r1: m.r1, c1: map(m.c1) }));
+      const hidden = new Set();
+      sh.hidden.forEach(r => hidden.add(isRow ? map(r) : r));
+      sh.hidden = hidden;
+      const f = sh.filter;
+      if (f) {
+        const lo = isRow ? f.r0 : f.c0, hi = isRow ? f.r1 : f.c1;
+        const ids = [];
+        for (let i = lo; i <= hi; i++) ids.push(map(i));
+        const min = Math.min(...ids), max = Math.max(...ids);
+        const contiguous = max - min === hi - lo;
+        if (!contiguous || (isRow && map(lo) !== min)) {
+          sh.filter = null;
+          sh.hidden = new Set();
+          toast('Se quitó el filtro porque el movimiento cambió la tabla filtrada.');
+        } else if (isRow) {
+          f.r0 = min; f.r1 = max;
+        } else {
+          f.c0 = min; f.c1 = max;
+          const crit = {};
+          Object.keys(f.crit).forEach(c => { crit[map(+c)] = f.crit[c]; });
+          f.crit = crit;
+        }
+      }
+      S.clip = null;
+      $('copyBox').hidden = true;
+    });
+    if (isRow) { S.anchor = { r: first, c: 0 }; select(first, 0, first + count - 1, S.L.cols - 1, first, 0); }
+    else { S.anchor = { r: 0, c: first }; select(0, first, S.L.rows - 1, first + count - 1, 0, first); }
+  }
+
+  const isWholeCols = () => !!S.sel.wholeCols;
+  const isWholeRows = () => !!S.sel.wholeRows;
+
+  /** Borde de columna/fila más cercano al puntero: índice antes del cual se insertaría. */
+  function boundaryAt(axis, x, y) {
+    const L = S.L;
+    const { px, py } = gridPoint(x, y);
+    if (axis === 'col') {
+      let c = 0;
+      while (c < L.cols - 1 && L.colX[c] + L.colW[c] <= px) c++;
+      return px < L.colX[c] + L.colW[c] / 2 ? c : c + 1;
+    }
+    let r = 0;
+    while (r < L.rows - 1 && L.rowY[r] + L.rowH[r] <= py) r++;
+    return py < L.rowY[r] + L.rowH[r] / 2 ? r : r + 1;
+  }
+
+  function showMoveLine(axis, boundary) {
+    const L = S.L;
+    const line = $('moveLine');
+    const totalH = L.rowY[L.rows - 1] + L.rowH[L.rows - 1];
+    const totalW = L.colX[L.cols - 1] + L.colW[L.cols - 1];
+    if (axis === 'col') {
+      const x = boundary >= L.cols ? totalW : L.colX[boundary];
+      line.style.cssText = 'left:' + (x - 2) + 'px;top:0;width:4px;height:' + totalH + 'px';
+    } else {
+      const y = boundary >= L.rows ? totalH : L.rowY[boundary];
+      line.style.cssText = 'top:' + (y - 2) + 'px;left:0;height:4px;width:' + totalW + 'px';
+    }
+    line.hidden = false;
+  }
+
+  function endMoveDrag() {
+    $('moveLine').hidden = true;
+    document.body.classList.remove('moving');
   }
 
   // ---------- Copiar, cortar y pegar ----------
@@ -3542,6 +3689,35 @@ var _default = exports.default = dictionary;
     $('findMsg').textContent = '';
   }
 
+  // ---------- Zoom ----------
+  function setZoom(z) {
+    z = clamp(z, ZOOM_STEPS[0], ZOOM_STEPS[ZOOM_STEPS.length - 1]);
+    if (z === S.zoom) return;
+    if (S.edit && !commitEdit()) return;
+    const sc = $('scroller');
+    const ratio = z / S.zoom;
+    const top = sc.scrollTop * ratio, left = sc.scrollLeft * ratio;
+    S.zoom = z;
+    updateZoomUI();
+    if (!S.loaded) return;
+    renderGrid();
+    sc.scrollTop = top; sc.scrollLeft = left;
+    renderWindow(true);
+    updateSelectionUI();
+  }
+
+  function stepZoom(dir) {
+    const i = ZOOM_STEPS.findIndex(v => Math.abs(v - S.zoom) < 0.001);
+    setZoom(ZOOM_STEPS[clamp(i + dir, 0, ZOOM_STEPS.length - 1)]);
+  }
+
+  function updateZoomUI() {
+    $('zoomLbl').textContent = Math.round(S.zoom * 100) + '%';
+    $('zoomOut').disabled = !S.loaded || S.zoom <= ZOOM_STEPS[0];
+    $('zoomIn').disabled = !S.loaded || S.zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1];
+    $('zoomLbl').disabled = !S.loaded;
+  }
+
   // ---------- Hojas ----------
   function renderTabs() {
     const tabs = $('tabs');
@@ -3692,6 +3868,7 @@ var _default = exports.default = dictionary;
     $('welcome').hidden = true;
     $('scroller').hidden = false;
     document.querySelectorAll('.needs-file').forEach(b => { b.disabled = false; });
+    updateZoomUI();
     renderTabs();
     renderGrid();
     $('scroller').scrollTo(0, 0);
@@ -3966,12 +4143,21 @@ var _default = exports.default = dictionary;
     return { r: +td.dataset.r, c: +td.dataset.c, td };
   }
 
+  /** Coordenadas del puntero dentro de la cuadrícula (sin contar el scroll visible). */
+  function gridPoint(x, y) {
+    const sc = $('scroller');
+    const rect = sc.getBoundingClientRect();
+    return {
+      px: clamp(x, rect.left + 1, rect.right - 2) - rect.left + sc.scrollLeft,
+      py: clamp(y, rect.top + 1, rect.bottom - 2) - rect.top + sc.scrollTop
+    };
+  }
+
   function cellAtPoint(x, y) {
     const sc = $('scroller');
     const rect = sc.getBoundingClientRect();
     const L = S.L;
-    const px = clamp(x, rect.left + 1, rect.right - 2) - rect.left + sc.scrollLeft;
-    const py = clamp(y, rect.top + 1, rect.bottom - 2) - rect.top + sc.scrollTop;
+    const { px, py } = gridPoint(x, y);
     let c = 0, r = 0;
     while (c < L.cols - 1 && L.colX[c] + L.colW[c] <= px) c++;
     while (r < L.rows - 1 && L.rowY[r] + L.rowH[r] <= py) r++;
@@ -3989,7 +4175,7 @@ var _default = exports.default = dictionary;
     if (e.clientY > rect.bottom - 16) sc.scrollTop += 20;
     else if (e.clientY < rect.top + S.L.headH + 8) sc.scrollTop -= 20;
     if (e.clientX > rect.right - 16) sc.scrollLeft += 20;
-    else if (e.clientX < rect.left + HEAD_W + 8) sc.scrollLeft -= 20;
+    else if (e.clientX < rect.left + headW() + 8) sc.scrollLeft -= 20;
   }
 
   function bindGrid() {
@@ -4008,7 +4194,7 @@ var _default = exports.default = dictionary;
         e.preventDefault();
         const isCol = rz.dataset.rzc !== undefined;
         const idx = +(isCol ? rz.dataset.rzc : rz.dataset.rzr);
-        S.drag = { type: isCol ? 'rzc' : 'rzr', idx, start: isCol ? e.clientX : e.clientY, orig: isCol ? colWidth(idx) : rowHeight(idx) };
+        S.drag = { type: isCol ? 'rzc' : 'rzr', idx, start: isCol ? e.clientX : e.clientY, orig: isCol ? colPx(idx) : rowPx(idx) };
         return;
       }
       const th = e.target.closest('th');
@@ -4019,12 +4205,20 @@ var _default = exports.default = dictionary;
         if (th.dataset.hc !== undefined) {
           const c = +th.dataset.hc;
           if (e.button === 2 && c >= S.sel.c0 && c <= S.sel.c1 && S.sel.r0 === 0) return;
+          if (e.button === 0 && !e.shiftKey && isWholeCols() && !isWholeRows() && c >= S.sel.c0 && c <= S.sel.c1) {
+            S.drag = { type: 'movecols', c, startX: e.clientX, active: false, from: S.sel.c0, count: S.sel.c1 - S.sel.c0 + 1 };
+            return;
+          }
           if (e.shiftKey) { select(0, S.anchor.c, S.L.rows - 1, c, 0, S.anchor.c, true); }
           else { S.anchor = { r: 0, c }; select(0, c, S.L.rows - 1, c, 0, c, true); }
           S.drag = { type: 'cols' };
         } else if (th.dataset.hr !== undefined) {
           const r = +th.dataset.hr;
           if (e.button === 2 && r >= S.sel.r0 && r <= S.sel.r1 && S.sel.c0 === 0) return;
+          if (e.button === 0 && !e.shiftKey && isWholeRows() && !isWholeCols() && r >= S.sel.r0 && r <= S.sel.r1) {
+            S.drag = { type: 'moverows', r, startY: e.clientY, active: false, from: S.sel.r0, count: S.sel.r1 - S.sel.r0 + 1 };
+            return;
+          }
           if (e.shiftKey) { select(S.anchor.r, 0, r, S.L.cols - 1, S.anchor.r, 0, true); }
           else { S.anchor = { r, c: 0 }; select(r, 0, r, S.L.cols - 1, r, 0, true); }
           S.drag = { type: 'rows' };
@@ -4110,6 +4304,17 @@ var _default = exports.default = dictionary;
         }
         return;
       }
+      if (d.type === 'movecols' || d.type === 'moverows') {
+        const isCol = d.type === 'movecols';
+        if (!d.active && Math.abs((isCol ? e.clientX - d.startX : e.clientY - d.startY)) < 5) return;
+        d.active = true;
+        document.body.classList.add('moving');
+        autoScroll(e);
+        d.boundary = boundaryAt(isCol ? 'col' : 'row', e.clientX, e.clientY);
+        if (d.boundary >= d.from && d.boundary <= d.from + d.count) $('moveLine').hidden = true;
+        else showMoveLine(isCol ? 'col' : 'row', d.boundary);
+        return;
+      }
       autoScroll(e);
       const p = cellAtPoint(e.clientX, e.clientY);
       if (d.type === 'cells') {
@@ -4147,12 +4352,24 @@ var _default = exports.default = dictionary;
         commit(() => {
           if (d.type === 'rzc') {
             const all = s.r0 === 0 && s.r1 >= S.L.rows - 1 && d.idx >= s.c0 && d.idx <= s.c1;
-            for (let c = all ? s.c0 : d.idx; c <= (all ? s.c1 : d.idx); c++) sheet().colW[c] = d.size;
+            const base = Math.max(1, Math.round(d.size / S.zoom));
+            for (let c = all ? s.c0 : d.idx; c <= (all ? s.c1 : d.idx); c++) sheet().colW[c] = base;
           } else {
             const all = s.c0 === 0 && s.c1 >= S.L.cols - 1 && d.idx >= s.r0 && d.idx <= s.r1;
-            for (let r = all ? s.r0 : d.idx; r <= (all ? s.r1 : d.idx); r++) sheet().rowH[r] = d.size;
+            const base = Math.max(1, Math.round(d.size / S.zoom));
+            for (let r = all ? s.r0 : d.idx; r <= (all ? s.r1 : d.idx); r++) sheet().rowH[r] = base;
           }
         });
+      } else if (d.type === 'movecols' || d.type === 'moverows') {
+        endMoveDrag();
+        const isCol = d.type === 'movecols';
+        if (!d.active) {
+          // Fue un clic: queda seleccionada solo esa columna o fila.
+          if (isCol) { S.anchor = { r: 0, c: d.c }; select(0, d.c, S.L.rows - 1, d.c, 0, d.c, true); }
+          else { S.anchor = { r: d.r, c: 0 }; select(d.r, 0, d.r, S.L.cols - 1, d.r, 0, true); }
+        } else if (d.boundary !== undefined) {
+          moveLines(isCol ? 'col' : 'row', d.from, d.count, d.boundary);
+        }
       } else if (d.type === 'fill') {
         $('fillPreview').hidden = true;
         if (d.dir) doFill(d.dir, d.count);
@@ -4229,7 +4446,7 @@ var _default = exports.default = dictionary;
       case 'F2': e.preventDefault(); startEdit('edit'); return;
       case 'Delete': e.preventDefault(); clearContents(); return;
       case 'Backspace': e.preventDefault(); startEdit('enter', ''); return;
-      case 'Escape': clearClip(); closeMenus(); return;
+      case 'Escape': if (S.drag && S.drag.active) { S.drag = null; endMoveDrag(); } clearClip(); closeMenus(); return;
     }
   }
 
@@ -4293,6 +4510,10 @@ var _default = exports.default = dictionary;
     $('btnFilter').onclick = withGrid(toggleFilter);
     $('btnFind').onclick = () => { if (S.edit && !commitEdit()) return; openFind(); };
     $('btnAddSheet').onclick = () => { if (S.edit && !commitEdit()) return; addSheet(); };
+    $('zoomOut').onclick = () => stepZoom(-1);
+    $('zoomIn').onclick = () => stepZoom(1);
+    $('zoomLbl').onclick = () => setZoom(1);
+    updateZoomUI();
     $('fontSize').onchange = withGrid(() => { const n = +$('fontSize').value; setStyleAll({ size: n === 11 ? null : n }); });
     $('numFormat').onchange = withGrid(() => setFormat($('numFormat').value));
 

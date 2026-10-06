@@ -95,15 +95,15 @@ button:disabled { cursor: default; opacity: .4; }
 .scroller { position: absolute; inset: 0; overflow: auto; }
 .grid-wrap { position: relative; display: inline-block; min-width: 100%; }
 
-.grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; font-family: var(--cell); font-size: 14px; background: #fff; }
-.grid th, .grid td { height: 21px; padding: 0 4px; border-right: 1px solid var(--grid-line); border-bottom: 1px solid var(--grid-line); white-space: nowrap; overflow: hidden; text-overflow: clip; line-height: 1.2; }
+.grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; font-family: var(--cell); font-size: calc(14px * var(--z, 1)); background: #fff; }
+.grid th, .grid td { height: 21px; padding: 0 calc(4px * var(--z, 1)); border-right: 1px solid var(--grid-line); border-bottom: 1px solid var(--grid-line); white-space: nowrap; overflow: hidden; text-overflow: clip; line-height: 1.2; }
 .grid td { vertical-align: bottom; padding-bottom: 1px; cursor: cell; background: #fff; }
 .grid td.ov { overflow: visible; }
 .grid td.num { text-align: right; }
 .grid td.ctr { text-align: center; }
 .grid td.err { text-align: center; }
-.grid thead th { position: sticky; top: 0; z-index: 5; background: var(--head-bg); color: var(--head-fg); font: 12px var(--ui); text-align: center; border-color: var(--line); user-select: none; cursor: s-resize; overflow: visible; }
-.grid tbody th { position: sticky; left: 0; z-index: 4; background: var(--head-bg); color: var(--head-fg); font: 12px var(--ui); text-align: center; border-color: var(--line); user-select: none; cursor: e-resize; overflow: visible; }
+.grid thead th { position: sticky; top: 0; z-index: 5; background: var(--head-bg); color: var(--head-fg); font: calc(12px * var(--z, 1)) var(--ui); text-align: center; border-color: var(--line); user-select: none; cursor: s-resize; overflow: visible; }
+.grid tbody th { position: sticky; left: 0; z-index: 4; background: var(--head-bg); color: var(--head-fg); font: calc(12px * var(--z, 1)) var(--ui); text-align: center; border-color: var(--line); user-select: none; cursor: e-resize; overflow: visible; }
 .grid thead th.corner { left: 0; z-index: 7; cursor: default; }
 .grid th.hsel { background: var(--head-sel); color: var(--accent-dark); }
 .grid td.fr { position: sticky; top: var(--hh, 22px); z-index: 3; }
@@ -202,3 +202,15 @@ button.primary:hover { background: var(--accent-dark); }
   .print-area tr { break-inside: avoid; }
 }
 .grid tr.spacer td { height: 0; padding: 0; border: 0; background: transparent; cursor: default; }
+
+/* Zoom */
+.zoom { display: flex; align-items: center; gap: 2px; margin-left: auto; padding: 0 12px; flex: none; }
+.zoom button { min-width: 26px; height: 24px; padding: 0 6px; border: 1px solid transparent; border-radius: 3px; background: transparent; font-size: 15px; line-height: 1; color: var(--fg); }
+.zoom button:hover:not(:disabled) { background: var(--chrome-2); border-color: var(--line); }
+.zoom .zoom-lbl { min-width: 48px; font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* Mover columnas y filas */
+.grid.sel-cols thead th.hsel { cursor: grab; }
+.grid.sel-rows tbody th.hsel { cursor: grab; }
+body.moving, body.moving * { cursor: grabbing !important; }
+.move-line { position: absolute; z-index: 9; background: var(--accent); pointer-events: none; border-radius: 2px; box-shadow: 0 0 0 1px #fff; }

@@ -12,6 +12,8 @@ App web para abrir, editar y guardar planillas (listas de precios y planillas si
   - `.ods`: datos y fórmulas, sin colores ni bordes.
   - `.xls`: datos y resultados de las fórmulas, sin colores ni bordes. La librería gratuita no puede escribir las fórmulas en el formato viejo de Excel.
   - `.csv` y `.tsv`: solo los valores de la hoja activa, tal como se ven. El CSV usa `;` como separador, igual que Excel en Argentina.
+- **Zoom:** los botones **−** y **+** de abajo a la derecha cambian el tamaño de la planilla de 50% a 200%. Tocá el porcentaje para volver a 100%. Es solo de pantalla: al imprimir sale en tamaño normal.
+- **Mover columnas y filas:** hacé clic en la letra de la columna (o el número de la fila), o seleccioná varias con Shift, y arrastralas a otro lugar. Una línea verde marca dónde van a quedar. Viajan con sus datos, formato y tamaño, y las fórmulas se ajustan solas. No se pueden mover si partirían una celda combinada. Con Ctrl+Z se deshace.
 - **Imprimir / PDF** usa la impresión del navegador. Para obtener un PDF, elegí "Guardar como PDF".
 
 ### Fórmulas
